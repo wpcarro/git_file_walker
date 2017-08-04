@@ -5,12 +5,25 @@ import sys
 import git
 import colorama
 import subprocess
+import argparse
 
 
-def browse_file_history(repo_dir, filename):
+def browse_file_history(repo_dir, filename, **kwargs):
+    should_reverse = kwargs['rev']
+    count = kwargs['count']
+
     g = git.Git(repo_dir)
     commits = file_commits(g, filename)
-    pages = (trim_and_colorize_diff(g.show(commit, filename)) for commit in reversed(commits))
+
+    if should_reverse:
+        commits.reverse()
+        commits = commits[:count]
+    else:
+        commits = commits[:count]
+
+    pages = (trim_and_colorize_diff(g.show(commit, filename)) for commit in commits)
+
+    pages = (trim_and_colorize_diff(g.show(commit, filename)) for commit in commits)
     clear_screen()
 
     for page in pages:
@@ -59,13 +72,20 @@ def file_commits(g, filename):
 
 
 if __name__ == '__main__':
+    # Parse CLI args
+    parser = argparse.ArgumentParser(description='Step through a file\'s git history.')
+    parser.add_argument('filename', metavar='file', type=str, nargs=1, help='path of the file to browse')
+    parser.add_argument('-r', '--rev', dest='reverse', action='store_true', help='browse the history in reverse (default: False)')
+    parser.add_argument('-c', '--count', dest='count', type=int, default=20, help='maximum number of commits to view (default: 20)')
+    args = parser.parse_args()
+
     # Initialize colorama for Windows platform
     colorama.init()
 
     # LIMITATION: can only run this program successfully from the repo's root
     repo_dir = os.getcwd()
 
-    filename = sys.argv[1]
-    browse_file_history(repo_dir, filename)
+    filename = args.filename
+    browse_file_history(repo_dir, filename, rev=args.reverse, count=args.count)
 
 
